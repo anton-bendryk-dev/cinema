@@ -1,80 +1,145 @@
 import React from 'react';
 import '../style/App.sass';
-import { moviesData } from './moviesData';
+import { API_URL, API_KEY_3 } from "./Api";
 import MovieItem from './movieItem';
-
+import MovieTabs from "./components/MovieTabs";
+import Pagination from "./components/Pagination";
 class App extends React.Component {
   constructor() {
     super();
 
     this.state = {
-      movies: moviesData,
-      moviesWillWatch: []
+      movies: [],
+      movieWillWatch: [],
+      sort_by: "popularity.desc",
+      currentPage: 1,
+      totalPages: 0,
+      isLoading: false,
     };
 
     // this.removeMovie = this.removeMovie.bind(this);
   }
+  componentDidMount() {
+    this.setState({ isLoading: true });
+    this.getMovies();
+  }
 
-  removeMovie = movie => {
-    const updateMovies = this.state.movies.filter(function(item) {
-      return item.id !== movie.id;
-    });
-    console.log(updateMovies);
-    // this.state.movies = updateMovies;
+  componentDidUpdate(prevProps, prevState) {
+    return prevState.sort_by !== this.state.sort_by ||
+      prevState.currentPage !== this.state.currentPage
+      ? this.getMovies()
+      : false;
+  }
+
+  getMovies = () => {
+    fetch(
+      `${API_URL}/discover/movie?api_key=${API_KEY_3}&sort_by=${this.state.sort_by}&page=${this.state.currentPage}`
+    )
+      .then(response => response.json())
+      .then(data => {
+        this.setState({
+          movies: data.results,
+          isLoading: false,
+          totalPages: data.total_pages,
+        });
+      });
+  };
+
+  updateSortBy = value => {
     this.setState({
-      movies: updateMovies
+      sort_by: value,
+      currentPage: 1,
     });
+  };
+
+  changeCurrentPage = value => {
+    if (value > 0) {
+      this.setState({
+        currentPage: value,
+      });
+    }
   };
 
   addMovieToWillWatch = movie => {
-    console.log(movie);
-    // this.state.moviesWillWatch.push(movie);
-    // const updateMoviesWillWatch = [...this.state.moviesWillWatch];
-    // updateMoviesWillWatch.push(movie);
 
-    const updateMoviesWillWatch = [...this.state.moviesWillWatch, movie];
+    const updateMovies = [...this.state.movieWillWatch, movie];
 
     this.setState({
-      moviesWillWatch: updateMoviesWillWatch
+      movieWillWatch: updateMovies
     });
+
   };
 
   removeMovieFromWillWatch = movie => {
-    const updateMoviesWillWatch = this.state.moviesWillWatch.filter(function(
-      item
-    ) {
+    const updateMoviesWillWatch = this.state.movieWillWatch.filter(function (item) {
       return item.id !== movie.id;
     });
-    // this.state.movies = updateMovies;
+
     this.setState({
-      moviesWillWatch: updateMoviesWillWatch
+      movieWillWatch: updateMoviesWillWatch
+    })
+  }
+
+  removeMovie = movie => {
+    const updateMovies = this.state.movies.filter(function (item) {
+      return item.id !== movie.id;
+    });
+    this.setState({
+      movies: updateMovies,
     });
   };
 
   render() {
-    console.log("render", this.state, this.temp);
+    if (this.state.isLoading) {
+      return <p>Loading ...</p>;
+    }
     return (
       <div className="container">
         <div className="row">
+
           <div className="col-9">
-            <div className="row">
-              {this.state.movies.map(movie => {
+            <div className="row mb-8 mt-5">
+              <div className="col-12">
+                <MovieTabs
+                  sort_by={this.state.sort_by}
+                  updateSortBy={this.updateSortBy}
+                />
+              </div>
+              {this.state.movies.map((movie) => {
                 return (
-                  <div className="col-6 mb-4" key={movie.id}>
-                    <MovieItem
-                      movie={movie}
-                      removeMovie={this.removeMovie}
-                      addMovieToWillWatch={this.addMovieToWillWatch}
-                      removeMovieFromWillWatch={this.removeMovieFromWillWatch}
-                    />
-                  </div>
+                <div className="col-sm-4 mt-4"> 
+                  <MovieItem
+                    key={movie.id}
+                    movie={movie}
+                    removeMovie={this.removeMovie}
+                    addMovieToWillWatch={this.addMovieToWillWatch}
+                    removeMovieFromWillWatch={this.removeMovieFromWillWatch}
+                  />
+                </div>
                 );
               })}
             </div>
           </div>
-          <div className="col-3">
-            <p>Will Watch: {this.state.moviesWillWatch.length}</p>
+          <div className="col-3 mt-5">
+            <h4>Will Watch: {this.state.movieWillWatch.length} movies</h4>
+            <ul className="list-group">
+              {this.state.movieWillWatch.map(movie => (
+                <li key={movie.id} className="list-group-item">
+                  <div className="d-flex justify-content-between">
+                    <p>{movie.title}</p>
+                    <p>{movie.vote_average}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
+        </div>
+        <div className="row justify-content-center">
+          <Pagination
+            currentPage={this.state.currentPage}
+            totalPages={this.state.totalPages}
+            changeCurrentPage={this.changeCurrentPage}
+          />
         </div>
       </div>
     );
